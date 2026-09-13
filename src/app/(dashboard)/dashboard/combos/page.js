@@ -10,6 +10,8 @@ import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import { useModelCaps } from "@/shared/hooks/useModelCaps";
 import { aggregateComboCapabilities } from "open-sse/providers/capabilities.js";
 import { resolveProviderId, AI_PROVIDERS } from "@/shared/constants/providers";
+import { isOpenAICompatibleProvider, isAnthropicCompatibleProvider } from "@/shared/constants/providers";
+import { saveModelTestResults } from "@/shared/utils/modelTestResultsClient";
 
 // Validate combo name: only a-z, A-Z, 0-9, -, _
 const VALID_NAME_REGEX = /^[a-zA-Z0-9_.\-]+$/;
@@ -842,6 +844,7 @@ function ComboCard({ combo, getCaps, comboByName = {}, activeProviders = [], cop
           title="Select Judge Model"
           addedModelValues={judge ? [judge] : []}
           closeOnSelect={true}
+          hideFailedModels
         />
       )}
 
@@ -1073,6 +1076,7 @@ function CapacityAdapterCap({ cap, entry, onChange, activeProviders, getCaps }) 
           addedModelValues={models}
           capFilter={cap.key}
           closeOnSelect={false}
+          hideFailedModels
         />
       )}
     </Card>
@@ -1324,6 +1328,7 @@ function ComboFormModal({ isOpen, combo, onClose, onSave, activeProviders, kindF
 
   // Probe one combo model via POST /api/models/test (same endpoint the provider
   // detail page uses). uid keeps results stable across reorders/edits.
+  // The terminal result is also persisted so combo pickers hide failed models.
   const handleTestModel = async (uid, modelValue) => {
     if (testingModelIds.has(uid)) return;
     setTestingModelIds((prev) => new Set(prev).add(uid));
@@ -1334,19 +1339,19 @@ function ComboFormModal({ isOpen, combo, onClose, onSave, activeProviders, kindF
         body: JSON.stringify({ model: modelValue }),
       });
       const data = await res.json().catch(() => ({}));
-      setModelTestResults((prev) => ({
-        ...prev,
-        [uid]: {
-          state: data.ok ? "ok" : "error",
-          latencyMs: typeof data.latencyMs === "number" ? data.latencyMs : null,
-          error: data.ok ? null : (data.error || "Model not reachable"),
-        },
-      }));
+      const result = {
+        state: data.ok ? "ok" : "error",
+        latencyMs: typeof data.latencyMs === "number" ? data.latencyMs : null,
+        error: data.ok ? null : (data.error || "Model not reachable"),
+      };
+      setModelTestResults((prev) => ({ ...prev, [uid]: result }));
+      saveModelTestResults({ [modelValue]: result });
     } catch {
       setModelTestResults((prev) => ({
         ...prev,
         [uid]: { state: "error", latencyMs: null, error: "Network error" },
       }));
+      saveModelTestResults({ [modelValue]: { state: "error", latencyMs: null, error: "Network error" } });
     } finally {
       setTestingModelIds((prev) => { const n = new Set(prev); n.delete(uid); return n; });
     }
@@ -1462,6 +1467,7 @@ function ComboFormModal({ isOpen, combo, onClose, onSave, activeProviders, kindF
           kindFilter={kindFilter}
           addedModelValues={models}
           closeOnSelect={false}
+          hideFailedModels
         />
       )}
     </>
