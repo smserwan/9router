@@ -23,6 +23,27 @@
 
 ---
 
+## 🍴 Extra Features in This Fork
+
+> This repository is a fork of [decolua/9router](https://github.com/decolua/9router), kept in sync with upstream — **plus the additive dashboard features below.** Everything documented in the rest of this README (upstream) applies as-is.
+
+**Model testing workflow (dashboard):**
+
+- 🔍 **Model search + batch test** — a search filter and a "Test N Models" button (bounded concurrency, stop control, live summary, per-row latency & error) on provider pages, for both OpenAI/Anthropic-compatible and non-compatible providers
+- 🧹 **Bulk-delete failed models** — one "Delete N Failed" click after a batch test removes every model whose latest test errored; built-in models are disabled reversibly instead of deleted
+- 📥 **Import from /models** — pull unseen catalog models into non-compatible providers as custom models (includes a free-model catalog for the Kilo gateway)
+- 💾 **Persisted test results** — single & batch test outcomes (status, latency, error, tested-at) survive page reloads, stored via a new `GET/POST/DELETE /api/models/test-results` API
+- 🎛️ **Per-model test button** in the combo create/edit modal, and **failed models auto-hidden** in combo pickers behind an "N inactive hidden" toggle
+
+**Fixes on top of upstream:**
+
+- 🛠️ Provider detail page crash (`customModelRows` missing after an upstream refactor)
+- 🛠️ Empty responses on Responses-API providers — such calls now route through the forced-stream JSON handler even without a `forceStream` flag
+
+**Using this fork:** install a prebuilt `9router-*.tgz` directly (`npm install -g 9router-<version>.tgz`), or build from source with `npm install && npm run cli:pack`.
+
+---
+
 ## 🤔 Why 9Router?
 
 **Stop wasting money, tokens and hitting limits:**
