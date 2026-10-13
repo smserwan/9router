@@ -1156,11 +1156,13 @@ function ComboFormModal({ isOpen, combo, onClose, onSave, activeProviders, kindF
   };
 
   // Probe one combo model via POST /api/models/test (same endpoint the provider
-  // detail page uses). uid keeps results stable across reorders/edits.
-  // The terminal result is also persisted so combo pickers hide failed models.
-  const handleTestModel = async (uid, modelValue) => {
-    if (testingModelIds.has(uid)) return;
-    setTestingModelIds((prev) => new Set(prev).add(uid));
+  // detail page uses). Results are keyed by model value, not row position, so
+  // the status icon follows its model through reorders and inline edits;
+  // duplicate rows intentionally share the same status. The terminal result is
+  // also persisted so combo pickers hide failed models.
+  const handleTestModel = async (modelValue) => {
+    if (testingModelIds.has(modelValue)) return;
+    setTestingModelIds((prev) => new Set(prev).add(modelValue));
     try {
       const res = await fetch("/api/models/test", {
         method: "POST",
@@ -1173,16 +1175,16 @@ function ComboFormModal({ isOpen, combo, onClose, onSave, activeProviders, kindF
         latencyMs: typeof data.latencyMs === "number" ? data.latencyMs : null,
         error: data.ok ? null : (data.error || "Model not reachable"),
       };
-      setModelTestResults((prev) => ({ ...prev, [uid]: result }));
+      setModelTestResults((prev) => ({ ...prev, [modelValue]: result }));
       saveModelTestResults({ [modelValue]: result });
     } catch {
       setModelTestResults((prev) => ({
         ...prev,
-        [uid]: { state: "error", latencyMs: null, error: "Network error" },
+        [modelValue]: { state: "error", latencyMs: null, error: "Network error" },
       }));
       saveModelTestResults({ [modelValue]: { state: "error", latencyMs: null, error: "Network error" } });
     } finally {
-      setTestingModelIds((prev) => { const n = new Set(prev); n.delete(uid); return n; });
+      setTestingModelIds((prev) => { const n = new Set(prev); n.delete(modelValue); return n; });
     }
   };
 
@@ -1246,9 +1248,9 @@ function ComboFormModal({ isOpen, combo, onClose, onSave, activeProviders, kindF
                       onMoveUp={() => handleMoveUp(index)}
                       onMoveDown={() => handleMoveDown(index)}
                       onRemove={() => handleRemoveModel(index)}
-                      onTest={() => handleTestModel(uid, model)}
-                      isTesting={testingModelIds.has(uid)}
-                      testStatus={modelTestResults[uid]}
+                      onTest={() => handleTestModel(model)}
+                      isTesting={testingModelIds.has(model)}
+                      testStatus={modelTestResults[model]}
                     />
                   ))}
                 </div>
